@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 
 import com.smartSure.claimService.dto.PolicyDTO;
 
-@FeignClient(name = "POLICYSERVICE", path = "/api/policies")
+@FeignClient(name = "POLICYSERVICE", path = "/api/policy")
 public interface PolicyClient {
  
     @GetMapping("/{policyId}")

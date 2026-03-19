@@ -10,7 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
+//import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -29,15 +29,14 @@ public class ClaimController {
     // ─────────────────────────────────────────────
 
     // POST /api/claims
-    // Called by Policy Service via OpenFeign when a policy is purchased.
-    // Body: { "policyId": 1 }
+    // Called by Policy Service via OpenFeign — creates a DRAFT claim.
     @PostMapping
     public ResponseEntity<ClaimResponse> createClaim(@RequestBody ClaimRequest request) {
         return ResponseEntity.ok(claimService.createClaim(request));
     }
 
     // GET /api/claims/{id}
-    // Customer tracks their own claim status.
+    // Customer tracks their own claim.
     @GetMapping("/{id}")
     //@PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN')")
     public ResponseEntity<ClaimResponse> getClaimById(@PathVariable Long id) {
@@ -53,7 +52,7 @@ public class ClaimController {
     }
 
     // GET /api/claims/under-review
-    // Admin gets all claims pending review.
+    // Admin review queue.
     @GetMapping("/under-review")
     //@PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<ClaimResponse>> getAllUnderReviewClaims() {
@@ -61,7 +60,7 @@ public class ClaimController {
     }
 
     // GET /api/claims/{id}/policy
-    // Fetch full policy details for a claim via OpenFeign.
+    // Fetch policy details for a claim via OpenFeign.
     @GetMapping("/{id}/policy")
     //@PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN')")
     public ResponseEntity<PolicyDTO> getPolicyForClaim(@PathVariable Long id) {
@@ -69,7 +68,7 @@ public class ClaimController {
     }
 
     // DELETE /api/claims/{id}
-    // Only DRAFT claims can be deleted. Enforced in service layer.
+    // Only DRAFT claims can be deleted.
     @DeleteMapping("/{id}")
     //@PreAuthorize("hasRole('CUSTOMER')")
     public ResponseEntity<Void> deleteClaim(@PathVariable Long id) {
@@ -78,12 +77,27 @@ public class ClaimController {
     }
 
     // ─────────────────────────────────────────────
-    // STATUS TRANSITION (Admin only)
+    // SUBMIT  (Customer explicitly submits after uploading all 3 docs)
+    // ─────────────────────────────────────────────
+
+    /**
+     * PUT /api/claims/{id}/submit
+     * Customer manually submits the claim after uploading all 3 documents.
+     * Service validates all 3 docs are present — throws 400 if any is missing.
+     * On success: DRAFT → SUBMITTED → UNDER_REVIEW in a single call.
+     */
+    @PutMapping("/{id}/submit")
+    //@PreAuthorize("hasRole('CUSTOMER')")
+    public ResponseEntity<ClaimResponse> submitClaim(@PathVariable Long id) {
+        return ResponseEntity.ok(claimService.submitClaim(id));
+    }
+
+    // ─────────────────────────────────────────────
+    // STATUS TRANSITION  (Admin only)
     // ─────────────────────────────────────────────
 
     // PUT /api/claims/{id}/status?next=APPROVED
     // Admin moves claim to APPROVED or REJECTED.
-    // State machine in Status enum blocks any invalid transition automatically.
     @PutMapping("/{id}/status")
     //@PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ClaimResponse> moveToStatus(
@@ -93,11 +107,10 @@ public class ClaimController {
     }
 
     // ─────────────────────────────────────────────
-    // DOCUMENT UPLOAD (Customer)
+    // DOCUMENT UPLOAD  (Customer — no status change on upload)
     // ─────────────────────────────────────────────
 
     // POST /api/claims/{id}/upload/claim-form
-    // Customer uploads claim form → auto-transitions DRAFT → SUBMITTED.
     @PostMapping(value = "/{id}/upload/claim-form", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     //@PreAuthorize("hasRole('CUSTOMER')")
     public ResponseEntity<ClaimResponse> uploadClaimForm(
@@ -107,8 +120,6 @@ public class ClaimController {
     }
 
     // POST /api/claims/{id}/upload/aadhaar
-    // Customer uploads Aadhaar card.
-    // Auto-transitions SUBMITTED → UNDER_REVIEW if evidence is also uploaded.
     @PostMapping(value = "/{id}/upload/aadhaar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     //@PreAuthorize("hasRole('CUSTOMER')")
     public ResponseEntity<ClaimResponse> uploadAadhaarCard(
@@ -118,8 +129,6 @@ public class ClaimController {
     }
 
     // POST /api/claims/{id}/upload/evidence
-    // Customer uploads evidence.
-    // Auto-transitions SUBMITTED → UNDER_REVIEW if Aadhaar is also uploaded.
     @PostMapping(value = "/{id}/upload/evidence", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     //@PreAuthorize("hasRole('CUSTOMER')")
     public ResponseEntity<ClaimResponse> uploadEvidence(

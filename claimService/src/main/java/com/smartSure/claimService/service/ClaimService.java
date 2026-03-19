@@ -74,7 +74,45 @@ public class ClaimService {
     }
 
     // ─────────────────────────────────────────────
-    // STATUS TRANSITION
+    // SUBMIT  (Customer explicitly triggers DRAFT → SUBMITTED)
+    // ─────────────────────────────────────────────
+
+    /**
+     * Customer manually submits the claim after uploading all 3 documents.
+     * Transitions DRAFT → SUBMITTED only if ALL three documents are present.
+     * If any document is missing, throws DocumentNotUploadedException.
+     * After submission, since all 3 docs are guaranteed present,
+     * status is immediately moved SUBMITTED → UNDER_REVIEW automatically.
+     */
+    public ClaimResponse submitClaim(Long claimId) {
+        Claim claim = findOrThrow(claimId);
+
+        // Guard — can only submit a DRAFT claim
+        if (claim.getStatus() != Status.DRAFT) {
+            throw new IllegalStateException(
+                "Claim " + claimId + " cannot be submitted because it is not in DRAFT status.");
+        }
+
+        // All 3 documents must be present before submission is allowed
+        if (claim.getClaimForm() == null) {
+            throw new DocumentNotUploadedException("Claim form", claimId);
+        }
+        if (claim.getAadhaarCard() == null) {
+            throw new DocumentNotUploadedException("Aadhaar card", claimId);
+        }
+        if (claim.getEvidences() == null) {
+            throw new DocumentNotUploadedException("Evidence", claimId);
+        }
+
+        // All docs present — DRAFT → SUBMITTED → UNDER_REVIEW
+        claim.setStatus(claim.getStatus().moveTo(Status.SUBMITTED));
+        claim.setStatus(claim.getStatus().moveTo(Status.UNDER_REVIEW));
+
+        return toResponse(claimRepository.save(claim));
+    }
+
+    // ─────────────────────────────────────────────
+    // STATUS TRANSITION  (Admin only)
     // ─────────────────────────────────────────────
 
     public ClaimResponse moveToStatus(Long claimId, Status nextStatus) {
@@ -88,29 +126,24 @@ public class ClaimService {
     }
 
     // ─────────────────────────────────────────────
-    // DOCUMENT UPLOAD
+    // DOCUMENT UPLOAD  (no status change happens here anymore)
     // ─────────────────────────────────────────────
 
     public ClaimResponse uploadClaimForm(Long claimId, MultipartFile file) throws IOException {
         Claim claim = findOrThrow(claimId);
         claim.setClaimForm(toFileData(file));
-        if (claim.getStatus() == Status.DRAFT) {
-            claim.setStatus(claim.getStatus().moveTo(Status.SUBMITTED));
-        }
         return toResponse(claimRepository.save(claim));
     }
 
     public ClaimResponse uploadAadhaarCard(Long claimId, MultipartFile file) throws IOException {
         Claim claim = findOrThrow(claimId);
         claim.setAadhaarCard(toFileData(file));
-        autoTransitionToUnderReview(claim);
         return toResponse(claimRepository.save(claim));
     }
 
     public ClaimResponse uploadEvidence(Long claimId, MultipartFile file) throws IOException {
         Claim claim = findOrThrow(claimId);
         claim.setEvidences(toFileData(file));
-        autoTransitionToUnderReview(claim);
         return toResponse(claimRepository.save(claim));
     }
 
@@ -155,19 +188,12 @@ public class ClaimService {
         return new FileData(file.getOriginalFilename(), file.getContentType(), file.getBytes());
     }
 
-    private void autoTransitionToUnderReview(Claim claim) {
-        boolean aadhaarUploaded  = claim.getAadhaarCard() != null;
-        boolean evidenceUploaded = claim.getEvidences()   != null;
-        if (aadhaarUploaded && evidenceUploaded && claim.getStatus() == Status.SUBMITTED) {
-            claim.setStatus(claim.getStatus().moveTo(Status.UNDER_REVIEW));
-        }
-    }
-
     private void sendDecisionEmail(Claim claim, Status decision) {
         try {
             PolicyDTO policy = policyClient.getPolicyById(claim.getPolicyId());
             UserDTO user     = userClient.getUserById(policy.getUserId());
-            emailService.sendClaimDecisionEmail(user.getEmail(), user.getName(), claim.getId(), decision.name());
+            emailService.sendClaimDecisionEmail(
+                user.getEmail(), user.getName(), claim.getId(), decision.name());
         } catch (Exception e) {
             System.err.println("Failed to send claim decision email for claim "
                     + claim.getId() + ": " + e.getMessage());
@@ -178,11 +204,6 @@ public class ClaimService {
     // MAPPER
     // ─────────────────────────────────────────────
 
-    /**
-     * Converts Claim entity → ClaimResponse DTO.
-     * Raw byte[] data is stripped — only boolean flags indicate upload status.
-     * Actual files are only streamed through the download endpoints.
-     */
     private ClaimResponse toResponse(Claim claim) {
         return new ClaimResponse(
                 claim.getId(),

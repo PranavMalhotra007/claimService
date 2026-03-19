@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 
 import com.smartSure.claimService.dto.UserDTO;
 
-@FeignClient(name = "AUTHSERVICE", path = "/api/users")
+@FeignClient(name = "AUTHSERVICE", path = "/api/user")
 public interface UserClient {
  
     @GetMapping("/{userId}")
