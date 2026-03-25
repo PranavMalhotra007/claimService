@@ -5,7 +5,7 @@ import com.smartSure.claimService.client.UserClient;
 import com.smartSure.claimService.dto.ClaimRequest;
 import com.smartSure.claimService.dto.ClaimResponse;
 import com.smartSure.claimService.dto.PolicyDTO;
-import com.smartSure.claimService.dto.UserDTO;
+import com.smartSure.claimService.dto.UserResponseDto;
 import com.smartSure.claimService.entity.Claim;
 import com.smartSure.claimService.entity.FileData;
 import com.smartSure.claimService.entity.Status;
@@ -191,9 +191,9 @@ public class ClaimService {
     private void sendDecisionEmail(Claim claim, Status decision) {
         try {
             PolicyDTO policy = policyClient.getPolicyById(claim.getPolicyId());
-            UserDTO user     = userClient.getUserById(policy.getUserId());
+            UserResponseDto user     = userClient.getUserById(policy.getUserId());
             emailService.sendClaimDecisionEmail(
-                user.getEmail(), user.getName(), claim.getId(), decision.name());
+                user.getEmail(), user.getFirstName(), claim.getId(), decision.name());
         } catch (Exception e) {
             System.err.println("Failed to send claim decision email for claim "
                     + claim.getId() + ": " + e.getMessage());

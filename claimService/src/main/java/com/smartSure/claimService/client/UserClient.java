@@ -3,13 +3,10 @@ package com.smartSure.claimService.client;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import com.smartSure.claimService.dto.UserResponseDto;
 
-import com.smartSure.claimService.dto.UserDTO;
-
-@FeignClient(name = "AUTHSERVICE", path = "/api/user")
+@FeignClient(name = "AUTHSERVICE", path = "/user")
 public interface UserClient {
- 
-    @GetMapping("/{userId}")
-    UserDTO getUserById(@PathVariable("userId") Long userId);
+    @GetMapping("/getInfo/{userId}")
+    UserResponseDto getUserById(@PathVariable("userId") Long userId);
 }
- 
