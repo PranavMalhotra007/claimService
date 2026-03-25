@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 //import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -38,7 +39,7 @@ public class ClaimController {
     // GET /api/claims/{id}
     // Customer tracks their own claim.
     @GetMapping("/{id}")
-    //@PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN')")
     public ResponseEntity<ClaimResponse> getClaimById(@PathVariable Long id) {
         return ResponseEntity.ok(claimService.getClaimById(id));
     }
@@ -46,7 +47,7 @@ public class ClaimController {
     // GET /api/claims
     // Admin views all claims.
     @GetMapping
-    //@PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<ClaimResponse>> getAllClaims() {
         return ResponseEntity.ok(claimService.getAllClaims());
     }
@@ -54,7 +55,7 @@ public class ClaimController {
     // GET /api/claims/under-review
     // Admin review queue.
     @GetMapping("/under-review")
-    //@PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<ClaimResponse>> getAllUnderReviewClaims() {
         return ResponseEntity.ok(claimService.getAllUnderReviewClaims());
     }
@@ -62,7 +63,7 @@ public class ClaimController {
     // GET /api/claims/{id}/policy
     // Fetch policy details for a claim via OpenFeign.
     @GetMapping("/{id}/policy")
-    //@PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN')")
     public ResponseEntity<PolicyDTO> getPolicyForClaim(@PathVariable Long id) {
         return ResponseEntity.ok(claimService.getPolicyForClaim(id));
     }
@@ -70,7 +71,7 @@ public class ClaimController {
     // DELETE /api/claims/{id}
     // Only DRAFT claims can be deleted.
     @DeleteMapping("/{id}")
-    //@PreAuthorize("hasRole('CUSTOMER')")
+    @PreAuthorize("hasRole('CUSTOMER')")
     public ResponseEntity<Void> deleteClaim(@PathVariable Long id) {
         claimService.deleteClaim(id);
         return ResponseEntity.noContent().build();
@@ -87,7 +88,7 @@ public class ClaimController {
      * On success: DRAFT → SUBMITTED → UNDER_REVIEW in a single call.
      */
     @PutMapping("/{id}/submit")
-    //@PreAuthorize("hasRole('CUSTOMER')")
+    @PreAuthorize("hasRole('CUSTOMER')")
     public ResponseEntity<ClaimResponse> submitClaim(@PathVariable Long id) {
         return ResponseEntity.ok(claimService.submitClaim(id));
     }
@@ -99,7 +100,7 @@ public class ClaimController {
     // PUT /api/claims/{id}/status?next=APPROVED
     // Admin moves claim to APPROVED or REJECTED.
     @PutMapping("/{id}/status")
-    //@PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ClaimResponse> moveToStatus(
             @PathVariable Long id,
             @RequestParam Status next) {
@@ -112,7 +113,7 @@ public class ClaimController {
 
     // POST /api/claims/{id}/upload/claim-form
     @PostMapping(value = "/{id}/upload/claim-form", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    //@PreAuthorize("hasRole('CUSTOMER')")
+    @PreAuthorize("hasRole('CUSTOMER')")
     public ResponseEntity<ClaimResponse> uploadClaimForm(
             @PathVariable Long id,
             @RequestParam("file") MultipartFile file) throws IOException {
@@ -121,7 +122,7 @@ public class ClaimController {
 
     // POST /api/claims/{id}/upload/aadhaar
     @PostMapping(value = "/{id}/upload/aadhaar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    //@PreAuthorize("hasRole('CUSTOMER')")
+    @PreAuthorize("hasRole('CUSTOMER')")
     public ResponseEntity<ClaimResponse> uploadAadhaarCard(
             @PathVariable Long id,
             @RequestParam("file") MultipartFile file) throws IOException {
@@ -130,7 +131,7 @@ public class ClaimController {
 
     // POST /api/claims/{id}/upload/evidence
     @PostMapping(value = "/{id}/upload/evidence", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    //@PreAuthorize("hasRole('CUSTOMER')")
+    @PreAuthorize("hasRole('CUSTOMER')")
     public ResponseEntity<ClaimResponse> uploadEvidence(
             @PathVariable Long id,
             @RequestParam("file") MultipartFile file) throws IOException {
@@ -143,21 +144,21 @@ public class ClaimController {
 
     // GET /api/claims/{id}/download/claim-form
     @GetMapping("/{id}/download/claim-form")
-    //@PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN')")
     public ResponseEntity<byte[]> downloadClaimForm(@PathVariable Long id) {
         return buildFileResponse(claimService.downloadClaimForm(id));
     }
 
     // GET /api/claims/{id}/download/aadhaar
     @GetMapping("/{id}/download/aadhaar")
-    //@PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN')")
     public ResponseEntity<byte[]> downloadAadhaarCard(@PathVariable Long id) {
         return buildFileResponse(claimService.downloadAadhaarCard(id));
     }
 
     // GET /api/claims/{id}/download/evidence
     @GetMapping("/{id}/download/evidence")
-    //@PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN')")
     public ResponseEntity<byte[]> downloadEvidence(@PathVariable Long id) {
         return buildFileResponse(claimService.downloadEvidence(id));
     }
